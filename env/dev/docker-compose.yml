@@ -1,0 +1,155 @@
+version: '3.5'
+services:
+    app:
+        user: "${UID}:${GID}"
+        build:
+            context: ../../../
+            dockerfile: docker/src/php/Dockerfile
+            args:
+                UID: ${UID:-1001}
+                GID: ${GID:-1001}
+        environment:
+            PHP_IDE_CONFIG: "serverName=getdesk.loc"
+            APP_API_URL: ${APP_API_URL}
+        env_file:
+            - .env
+        volumes:
+            - '../../../:/var/www/html'
+            - "../../src/php/my.ini:/usr/local/etc/php/conf.d/my.ini"
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+    pgsql:
+        image: postgres:14
+        ports:
+            - '${FORWARD_DB_PORT:-5432}:5432'
+        environment:
+            POSTGRES_USER: '${DB_USERNAME:-getdesk}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-secret}'
+            POSTGRES_DB: '${DB_DATABASE:-getdesk}'
+        volumes:
+            - 'sailpgsql:/var/lib/postgresql/data'
+        networks:
+            - sail
+        healthcheck:
+          test: ["CMD", "pg_isready", "-q", "-d", "${DB_DATABASE}", "-U", "${DB_USERNAME}"]
+          retries: 3
+          timeout: 5s
+
+    nginx:
+        image: nginx:latest
+        ports:
+            - "80:80"
+        volumes:
+            - ../../../public:/var/www/html/public
+            - ../../src/nginx/nginx.conf:/etc/nginx/nginx.conf
+            - /dev/null:/etc/nginx/prod.conf
+        networks:
+            - sail
+        depends_on:
+            - app
+            - chat
+        restart: unless-stopped
+
+    build_external:
+        image: node:16-alpine
+        env_file:
+            - .env
+        environment:
+            REACT_APP_API_KEY_MAP: ${GOOGLE_CLOUD_KEY}
+            REACT_APP_CHAT_PUBLISHKEY: ${PUBNUB_PUBLISH_KEY}
+            REACT_APP_CHAT_SUBSCRIBEKEY: ${PUBNUB_SUBSCRIBE_KEY}
+            REACT_APP_CHAT_SECRET_KEY: adfasdfsafd
+        volumes:
+            - ../../../frontend/external:/frontend/external
+            - ../../../public/control/:/frontend/external/build
+        working_dir: /frontend/external
+        command: ["/bin/sh", "/frontend/external/build.sh"]
+
+    build_classic:
+        build:
+            context: ../../../
+            dockerfile: docker/src/node/Dockerfile
+            args:
+                UID: ${UID:-1001}
+                GID: ${GID:-1001}
+        env_file:
+            - .env
+        working_dir: /frontend/classic
+        environment:
+            SITE_URL: ${APP_URL}
+            GOOGLE_MAP_KEY: ${GOOGLE_CLOUD_KEY}
+        volumes:
+            - ../../../frontend/classic:/frontend/classic
+            - ../../../public/:/public/
+        command: ["/bin/sh", "/frontend/classic/build.sh"]
+
+    chat:
+        user: "${UID}:${GID}"
+        build:
+            context: ../../../
+            dockerfile: ../docker/src/chat/Dockerfile
+            args:
+                UID: ${UID:-1001}
+                GID: ${GID:-1001}
+        volumes:
+            - '../../../chat:/go/src/chat'
+        environment:
+            GOCACHE: "/tmp/"
+        env_file:
+            - .env
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+
+    queues:
+        build:
+            context: ../../../
+            dockerfile: docker/src/php/Dockerfile
+            args:
+                UID: ${UID:-1001}
+                GID: ${GID:-1001}
+        environment:
+            PHP_IDE_CONFIG: "serverName=queues_app.loc"
+        env_file:
+            - .env
+        volumes:
+            - '../../../:/var/www/html'
+            - "../../src/php/my.ini:/usr/local/etc/php/conf.d/my.ini"
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+        command: php artisan queue:work
+
+    cron:
+        user: "0:0"
+        build:
+            context: ../../../
+            dockerfile: docker/src/php/Dockerfile
+            args:
+                UID: ${UID:-1001}
+                GID: ${GID:-1001}
+        environment:
+            PHP_IDE_CONFIG: "serverName=app.loc"
+            APP_API_URL: ${APP_API_URL}
+        env_file:
+            - .env
+        volumes:
+            - '../../../:/var/www/html'
+            - "../../src/cron/:/cron"
+        networks:
+            - sail
+        depends_on:
+            - pgsql
+        entrypoint: [ "/bin/sh","-c","cat /cron/crontab | crontab - && crond -f" ]
+
+networks:
+    sail:
+        name: sail
+        driver: bridge
+volumes:
+    sailpgsql:
+        driver: local

@@ -1,0 +1,2 @@
+#* * * * * rsync -a -e ssh www@dev.getdesk.com:/var/www/html/public/photo /backup/dev.getdesk.com
+#* * * * * echo 1
