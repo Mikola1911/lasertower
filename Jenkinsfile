@@ -9,7 +9,7 @@ pipeline {
     }
     environment {
         REPO_URL = 'git@github.com:Mikola1911/lasertower.git'
-        BRANCH = 'master'
+        BRANCH = 'develop'
         CLONE_DIR = '/path/to/clone/directory'
         NEXUS_URL = 'http://127.0.0.1:8123'
         NEXUS_USERNAME = credentials('nexus-username')
@@ -36,19 +36,19 @@ pipeline {
                 }
             }
         }
-stage('Deploy on Master Node') {
-    agent {
-        label 'master'
-    }
-    environment {
-        MASTER_CLONE_DIR = '/'
-    }
-    steps {
-        dir(MASTER_CLONE_DIR) {
-            git branch: BRANCH, url: REPO_URL
-            dir('env/prod') {
-                sh 'docker-compose up -d'
-                sh 'docker-compose ps -a'
+        stage('Deploy on Dev Node') {
+            agent {
+                label 'dev'
+            }
+            environment {
+                DEV_CLONE_DIR = '/path/to/dev/clone/directory'
+            }
+            steps {
+                dir(DEV_CLONE_DIR) {
+                    git branch: 'develop', url: REPO_URL
+                    dir('env/dev') {
+                        sh 'docker-compose up -d'
+                        sh 'docker-compose ps -a'
                     }
                 }
             }
