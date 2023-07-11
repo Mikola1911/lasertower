@@ -10,8 +10,8 @@ pipeline {
     environment {
         REPO_URL = 'git@github.com:Mikola1911/lasertower.git'
         BRANCH = 'master'
-        CLONE_DIR = '/path/to/clone/directory'
-        NEXUS_URL = 'http://127.0.0.1:8123'
+        CLONE_DIR = '/'
+        NEXUS_URL = 'http://1177733-ca24368.tw1.ru/:8123'
         NEXUS_USERNAME = credentials('nexus-username')
         NEXUS_PASSWORD = credentials('nexus-password')
     }
