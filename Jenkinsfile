@@ -18,9 +18,7 @@ pipeline {
     stages {
         stage('Build and Push') {
             steps {
-                sh 'docker stop $(docker ps -aq)'
-                sh 'docker system prune -a --volumes'
-                dir(CLONE_DIR) {
+               dir(CLONE_DIR) {
                     git branch: BRANCH, url: REPO_URL
                     dir('env/dev') {
                         sh 'docker-compose up -d --build'
