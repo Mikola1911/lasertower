@@ -10,7 +10,7 @@ pipeline {
     environment {
         REPO_URL = 'git@github.com:Mikola1911/lasertower.git'
         BRANCH = 'develop'
-        CLONE_DIR = '/path/to/clone/directory'
+        CLONE_DIR = '/'
         NEXUS_URL = 'http://127.0.0.1:8123'
         NEXUS_USERNAME = credentials('nexus-username')
         NEXUS_PASSWORD = credentials('nexus-password')
@@ -18,8 +18,6 @@ pipeline {
     stages {
         stage('Build and Push') {
             steps {
-                sh 'docker stop $(docker ps -aq)'
-                sh 'docker system prune -a --volumes'
                 dir(CLONE_DIR) {
                     git branch: BRANCH, url: REPO_URL
                     dir('env/dev') {
